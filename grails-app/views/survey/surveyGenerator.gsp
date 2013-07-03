@@ -8,10 +8,14 @@
 <%@ page import="ticbox.Survey" contentType="text/html;charset=UTF-8" %>
 <html>
 <head>
-    <meta name="layout" content="survey"/>
+    <meta name="layout" content="surveyor"/>
     <title></title>
 
     <style type="text/css">
+
+        .surveyItemsContainer{
+
+        }
 
         .surveyItemsContainer input, .surveyItemsContainer textarea, .surveyItemsContainer select {
             margin: 0;
@@ -45,6 +49,10 @@
 
         .surveyItemContainer .table th, .surveyItemContainer .table td{
             padding: 5px 1px;
+        }
+
+        #surveyPreviewModal .table th, #surveyPreviewModal .table td{
+            padding: 5px 5px;
         }
 
         .surveyItemContainer .item-label {
@@ -180,12 +188,19 @@
 
         jQuery(function() {
 
-            jQuery('#surveyLogo').click(function(){
-                jQuery('.qq-upload-button > input').trigger('click');
+            jQuery('#uploadLogoBtn').click(function(){
+                jQuery('.qq-upload-button > input')
+                        .attr('accept', 'image/*')
+                        .trigger('click');
             });
 
-            jQuery('.enableTooltip').tooltip({
-                selector: "button[data-toggle=tooltip]"
+            jQuery('#pickLogoBtn').click(function(){
+                logoId = jQuery('input.logoResourceId:checked').val();
+
+                if (logoId) {
+                    jQuery('#surveyLogo > img').attr('src', '${request.contextPath}/survey/viewLogo?resourceId='+logoId);
+                    jQuery('#chooseLogoModal').modal('hide');
+                }
             });
 
             jQuery('.surveyItemTypeAdd').click(function(){
@@ -196,9 +211,10 @@
 
             });
 
-            jQuery('#submitSurveyBtn').click(function(){
+            jQuery('#saveSurveyBtn').click(function(){
 
                 var questionItems = buildQuestionItemsMap();
+
                 submitSurvey(questionItems);
 
             });
@@ -216,9 +232,54 @@
                 var questionItems = buildQuestionItemsMap();
                 constructPreview(questionItems);
 
+            }).on('hidden', function(){
+
+                jQuery('#surveyPreviewModal .modal-body').empty();
+
+            })/*.css({
+                'width': function () {
+                    return ($(document).width() * .8) + 'px';
+                },
+                'margin-left': function () {
+                    return -($(this).width() / 2);
+                }
+            })*/;
+
+            jQuery('#chooseLogoModal').on('show', function(){
+
+                if(jQuery('#chooseLogoModal .modal-body').html().trim() == ''){ //TODO .is(:empty) doesn't work -___-'
+                    jQuery.getJSON('${request.contextPath}/survey/getLogoIds', {}, function(data){
+
+                        jQuery('#chooseLogoModal .modal-body').empty();
+                        jQuery.each(data, function(idx, id){
+                            populateLogoImageResources(id);
+                        });
+
+                    });
+                }
+
+                if (logoId) {
+                    jQuery('input.logoResourceId[value="'+ logoId +'"]', jQuery('#chooseLogoModal')).next('a').trigger('click'); //TODO to accommodate prettyCheckable
+                }
+
+            }).on('hide', function(){
+
+                //TODO
+
             });
 
         });
+
+        var logoId = null;
+
+        function populateLogoImageResources(id){
+            var logoWrapper = jQuery('.templates .logoWrapper').clone().appendTo(jQuery('#chooseLogoModal .modal-body'));
+            jQuery('.logoImg', logoWrapper).attr('src', "${request.contextPath}/survey/viewLogo?resourceId="+id).click(function(){
+                //jQuery('input[name="logoResourceId"]', logoWrapper).prop('checked', true);
+                jQuery('input.logoResourceId', logoWrapper).next('a').trigger('click'); //TODO to accommodate prettyCheckable
+            });
+            jQuery('input.logoResourceId', logoWrapper).val(id).prettyCheckable();
+        }
 
         function constructQuestionItem(type, subtype){
             var answerComp = null;
@@ -244,15 +305,12 @@
                     jQuery('.add-item', answerComp).click(function(){
                         var newItem = jQuery('.choice-item:first', '#answerTemplate-choice').clone();
                         jQuery('.item-label', newItem).val('');
-                        jQuery('.item-check', newItem).click(function(){
-                            newItem.remove();
-                        });
 
                         newItem.appendTo(jQuery('.choice-items', answerComp));
-                    });
 
-                    jQuery('.item-check', answerComp).click(function(){
-                        jQuery('.choice-item:first', answerComp).remove();
+                        jQuery('input.item-check', newItem).click(function(){
+                            newItem.remove();
+                        });
                     });
 
                     break;
@@ -386,7 +444,7 @@
 
         function submitSurvey(questionItems){
 
-            jQuery.post('${request.contextPath}/survey/submitQuestionItems', {questionItems: JSON.stringify(questionItems), surveyTitle: jQuery('#surveyTitle').val()}, function(data){
+            jQuery.post('${request.contextPath}/survey/submitSurvey', {questionItems: JSON.stringify(questionItems), surveyTitle: jQuery('#surveyTitle').val(), logoResourceId:logoId}, function(data){
 
                 if('SUCCESS' == data){
                     alert('Submission success..');
@@ -417,9 +475,12 @@
 
                             jQuery.each(choiceItems, function(idx, choiceItem){
                                 var choiceItemCont = jQuery('.choice-items > .choice-item:first', container).clone();
-                                jQuery('.choice-items', container).append(choiceItemCont
-                                );
+                                jQuery('.choice-items', container).append(choiceItemCont);
                                 jQuery('.item-label', choiceItemCont).val(choiceItem);
+
+                                jQuery('input.item-check', choiceItemCont).click(function(){
+                                    choiceItemCont.remove();
+                                });
                             });
                             jQuery('.choice-items > .choice-item:first', container).remove();
 
@@ -446,14 +507,14 @@
 
                             jQuery.each(ratingLabels, function(idx, ratingLabel){
                                 var ratingLabelCont = jQuery('table.scale-table > thead th.rating-label:first', container).clone();
-                                jQuery('table.scale-table > thead th.rating-label:first', container).after(ratingLabelCont);
+                                jQuery('table.scale-table > thead > tr.scale-head > th.rating-label:last', container).after(ratingLabelCont);
                                 jQuery('input', ratingLabelCont).val(ratingLabel);
                             });
                             jQuery('table.scale-table > thead th.rating-label:first', container).remove();
 
                             jQuery.each(rowLabels, function(idx, rowLabel){
                                 var rowLabelCont = jQuery('table.scale-table > tbody > tr.scale-row:first', container).clone();
-                                jQuery('table.scale-table > tbody > tr.scale-row:first', container).after(rowLabelCont);
+                                jQuery('table.scale-table > tbody', container).append(rowLabelCont);
                                 jQuery('input.row-label', rowLabelCont).val(rowLabel);
                                 for(var i = 1; i < ratingLabels.length; i++){
                                     jQuery('td.rating-weight:first', rowLabelCont).after(jQuery('td.rating-weight:first', rowLabelCont).clone());
@@ -486,6 +547,13 @@
                 var questionStr = item.questionStr;
                 var answerDetails = item.answerDetails;
 
+                var questionTemplate = jQuery('#questionPreviewTemplate').clone().removeAttr('id');
+
+                jQuery('.seqNumberContainer', questionTemplate).html(idx+1+'.');
+                jQuery('.question-text', questionTemplate).html(questionStr);
+
+                var answerTemplate = null;
+
                 switch(answerDetails.type){
 
                     case '${Survey.QUESTION_TYPE.CHOICE}' :
@@ -493,40 +561,81 @@
                         var choiceItems = answerDetails.choiceItems;
                         var choiceType = answerDetails.choiceType;
 
-                        jQuery.each(choiceItems, function(idx, choiceItem){
+                        switch(choiceType){
 
-                        });
+                            case 'multiple' :
+
+                                answerTemplate = jQuery('#answerPreviewTemplate-multipleChoice').clone().removeAttr('id');
+
+                                jQuery.each(choiceItems, function(idx, choiceItem){
+                                    var choiceItemContainer = jQuery('.choice-item:first', answerTemplate).clone();
+                                    jQuery('input.item-check', choiceItemContainer).val(choiceItem);
+                                    jQuery('.item-label', choiceItemContainer).html(choiceItem);
+                                    answerTemplate.append(choiceItemContainer);
+                                });
+                                jQuery('.choice-item:first', answerTemplate).remove();
+
+                                break;
+                            case 'single' :
+
+                                answerTemplate = jQuery('#answerPreviewTemplate-singleChoice').clone().removeAttr('id');
+
+                                jQuery.each(choiceItems, function(idx, choiceItem){
+                                    jQuery('.item-select', answerTemplate).append(jQuery('<option></option>').append(choiceItem).val(choiceItem));
+                                });
+
+                                break;
+
+                        }
 
                         break;
 
                     case '${Survey.QUESTION_TYPE.FREE_TEXT}' :
 
-                        var questionPlaceHolder = answerDetails.questionPlaceholder;
+                        answerTemplate = jQuery('#answerPreviewTemplate-singleText').clone().removeAttr('id');
+                        jQuery('textarea', answerTemplate).attr('placeholder', answerDetails.questionPlaceholder);
 
                         break;
 
                     case '${Survey.QUESTION_TYPE.SCALE_RATING}' :
 
+                        answerTemplate = jQuery('#answerPreviewTemplate-scale').clone().removeAttr('id');
+
                         var ratingLabels = answerDetails.ratingLabels;
                         var rowLabels = answerDetails.rowLabels;
 
                         jQuery.each(ratingLabels, function(idx, ratingLabel){
-
+                            jQuery('.scale-head', answerTemplate).append(jQuery('<th class="rating-label" style="text-align: center"></th>').html(ratingLabel));
                         });
 
                         jQuery.each(rowLabels, function(idx, rowLabel){
+                            var scaleRow = jQuery('table.scale-table > tbody > tr.scale-row:first', answerTemplate).clone();
+                            jQuery('.row-label', scaleRow).html(rowLabel);
 
+                            jQuery.each(ratingLabels, function(idx, ratingLabel){
+                                var ratingWeightCont = jQuery('td.rating-weight:first', scaleRow).clone();
+                                jQuery('input', ratingWeightCont).attr('name', rowLabel);
+                                scaleRow.append(ratingWeightCont);
+                            });
+                            jQuery('td.rating-weight:first', scaleRow).remove();
+
+                            jQuery('table.scale-table > tbody', answerTemplate).append(scaleRow);
                         });
+                        jQuery('table.scale-table > tbody > tr.scale-row:first', answerTemplate).remove();
 
                         break;
 
                     case '${Survey.QUESTION_TYPE.STAR_RATING}' :
 
-
-
                         break;
 
                 }
+
+                if (answerTemplate) {
+                    questionTemplate.append(answerTemplate);
+                }
+
+                jQuery('#surveyPreviewModal .modal-body').append(questionTemplate);
 
             });
         }
@@ -540,20 +649,29 @@
 
 <div class="line rowLine10">
     <div class="col col10">
-        <div id="surveyLogo" class="clickable" style="width: 250px; height: 150px; background: #f5f5f5 url('../images/ticbox/Logo_Placeholder.png') no-repeat center">
-            <img src="${request.contextPath}/survey/viewLogo" style="width: 250px; height: 150px">
+        <div id="surveyLogo" class="clickable" data-toggle="modal" href="#chooseLogoModal" style="width: 250px; height: 150px; background: #f5f5f5 url('../images/ticbox/Logo_Placeholder.png') no-repeat center">
+            <img src="${request.contextPath}/survey/viewLogo?resourceId=${survey[Survey.COMPONENTS.LOGO]}" style="width: 250px; height: 150px">
         </div>
     </div>
-    <div class="col" style="width: 400px; height: auto; vertical-align: bottom; display: inline-block; color: #97b11a; padding-top: 80px;">
-        <g:message code="label.survey.survey-generator.survey-title" default="Your survey title here"/>
-        <textarea id="surveyTitle" style="width: 350px; display: inline-block; resize: none;"></textarea>
+    <div class="col" style="width: 400px; height: auto; vertical-align: bottom; display: inline-block; color: #97b11a; padding-top: 20px;">
+        <div class="line line-centered">
+            <h3>${survey.name}</h3>
+        </div>
+        <div class="line">
+            <g:message code="label.survey.survey-generator.survey-title" default="Your survey title here"/>
+            <textarea id="surveyTitle" style="width: 350px; display: inline-block; resize: none;"></textarea>
+        </div>
     </div>
 </div>
 
-<div class="line" style="display: none">
-    <uploader:uploader id="imageUploader" url="${[controller:'survey', action:'uploadLogo']}" params="${[:]}">
+<div style="display: none">
+    <uploader:uploader id="imageUploader" url="${[controller:'survey', action:'uploadLogo']}" params="${[:]}" sizeLimit="512" allowedExtensions="['jpeg', 'png', 'gif']">
         <uploader:onComplete>
-            jQuery('#surveyLogo > img').attr('src', '${request.contextPath}/survey/viewLogo');
+            if(responseJSON.resourceId){
+                populateLogoImageResources(responseJSON.resourceId);
+            }else{
+                alert(responseJSON.message);
+            }
         </uploader:onComplete>
     </uploader:uploader>
 </div>
@@ -562,8 +680,10 @@
 
 </div>
 
-<div class="line" style="text-align: center">
-    <button id="submitSurveyBtn" class="btn-ticbox"><g:message code="label.button.submit" default="SUBMIT"/></button>
+<div class="line line-centered">
+    <button class="btn-ticbox link" href="${request.contextPath}/survey/respondentFilter"><g:message code="label.button.back" default="Back"/></button>
+    <button id="saveSurveyBtn" class="btn-ticbox"><g:message code="label.button.save" default="Save"/></button>
+    <button id="finalizeSurveyBtn" class="btn-ticbox link" href="${request.contextPath}/survey/finalizeAndPublishSurvey"><g:message code="label.button.finalize" default="Finalize and Publish"/></button>
 </div>
 
 <div id="menuNavPanelContent" class="line">
@@ -583,7 +703,7 @@
         </div>
     </div>
 
-    <div class="line" style="text-align: center">
+    <div class="line line-centered">
         <button class="btn-ticbox" href="#surveyPreviewModal" role="button" data-toggle="modal"><g:message code="label.button.preview" default="PREVIEW" /> </button>
     </div>
 
@@ -659,7 +779,7 @@
     </div>
 
     <div id="answerTemplate-scale" class="answerTemplate line rowLine2" type="${Survey.QUESTION_TYPE.SCALE_RATING}">
-        <div class="col" style="height:auto; overflow-x: auto; max-width: 720px;">
+        <div class="col" style="height:auto; overflow-x: auto; max-width: 600px;">
             <table class="table scale-table">
                 <thead>
                     <tr class="scale-head">
@@ -693,20 +813,101 @@
         </div>
     </div>
 
+    %{--Preview Templates--}%
+
+    <div id="questionPreviewTemplate" class="surveyItemContainer line rowLine10">
+
+        <div class="line rowLine2">
+            <div class="seqNumberContainer questionNumber col"> </div>
+            <div class="questionTextContainer col col5" style="max-width: 93%">
+                <span class="question-text"></span>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="answerPreviewTemplate-singleText" class="answerTemplate line rowLine2" type="${Survey.QUESTION_TYPE.FREE_TEXT}">
+        <div class="col">
+            <textarea rows="3" placeholder=""></textarea>
+        </div>
+    </div>
+
+    <div id="answerPreviewTemplate-multipleChoice" class="answerTemplate line rowLine2" type="${Survey.QUESTION_TYPE.CHOICE}">
+        <div class="choice-items line">
+            <div class="choice-item line rowLine2">
+                <label class="checkbox">
+                    <input class="item-check" type="checkbox">
+                    <span class="item-label"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div id="answerPreviewTemplate-singleChoice" class="answerTemplate line rowLine2" type="${Survey.QUESTION_TYPE.CHOICE}">
+        <select class="item-select">
+            <option></option>
+        </select>
+    </div>
+
+    <div id="answerPreviewTemplate-scale" class="answerTemplate line rowLine2" type="${Survey.QUESTION_TYPE.SCALE_RATING}">
+        <div class="col" style="height:auto; overflow-x: auto; max-width: 720px;">
+            <table class="table scale-table table-bordered">
+                <thead>
+                <tr class="scale-head">
+                    <th></th>
+                    %{--<th class="rating-label" style="text-align: center"></th>--}%
+                </tr>
+                </thead>
+                <tbody>
+                <tr class="scale-row">
+                    <td class="row-label" style="max-width: 100px;"> </td>
+                    <td class="rating-weight" style="text-align: center">
+                        <input type="radio" name="rd-1">
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="logoWrapper col">
+        <div class="col col10 clickable" style="border: 1px solid #cccccc">
+            <img class="logoImg" src="" style="width: 230px; height: 150px">
+        </div>
+        <div class="line line-centered" style="margin: 10px auto;">
+            <input type="radio" name="logoResourceId" class="logoResourceId">
+        </div>
+    </div>
 
 </div>
 
 <!-- Preview Modal -->
-<div id="surveyPreviewModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="surveyPreviewModalLabel" aria-hidden="true">
+<div id="surveyPreviewModal" class="modal modal80 hide fade" tabindex="-1" role="dialog" aria-labelledby="surveyPreviewModalLabel" aria-hidden="true">
     <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
         <h3 id="surveyPreviewModalLabel">Survey Preview</h3>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" style="overflow: auto">
 
     </div>
     <div class="modal-footer">
-        <button class="btn-ticbox" data-dismiss="modal" aria-hidden="true">Close</button>
+        <button class="btn-ticbox" data-dismiss="modal" aria-hidden="true"><g:message code="label.button.close" default="Close"/></button>
+    </div>
+</div>
+
+%{--Upload image resource modal--}%
+<div id="chooseLogoModal" class="modal modal80 hide fade" tabindex="-1" role="dialog" aria-labelledby="chooseLogoModalLabel" aria-hidden="true">
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 id="chooseLogoModalLabel">Choose your logo or upload a new one</h3>
+    </div>
+    <div class="modal-body" style="overflow: auto">
+
+    </div>
+    <div class="modal-footer">
+        <button id="pickLogoBtn" class="btn-ticbox">Pick</button>
+        <button id="uploadLogoBtn" class="btn-ticbox">Upload</button>
+        <button class="btn-ticbox" data-dismiss="modal" aria-hidden="true"><g:message code="label.button.close" default="Close"/></button>
     </div>
 </div>
 

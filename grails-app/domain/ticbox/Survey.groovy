@@ -1,7 +1,9 @@
 package ticbox
 
 class Survey {
+    static SURVEY_TYPE = [EASY:"EASY", FREE:"FREE"]
     static POINT_TYPE = [TRUST:"TRUST", GOLD:"GOLD"]
+    static STATUS = [DRAFT:'DRAFT', IN_PROGRESS:'IN_PROGRESS', COMPLETED:'COMPLETED']
 
     static QUESTION_TYPE = [
         CHOICE : 'CHOICE',
@@ -11,7 +13,7 @@ class Survey {
     ]
 
     static COMPONENTS = [
-        SUMMARY_DETAIL : 'DETAIL_SUMMARIES',
+        SUMMARY_DETAIL : 'SUMMARY_DETAIL',
         RESPONDENT_FILTER : 'RESPONDENT_FILTER',
         QUESTION_ITEMS : 'QUESTION_ITEMS',
         LOGO : 'LOGO'
@@ -21,7 +23,13 @@ class Survey {
     String surveyId
     String name
     String title
-    
+    long point = 0
+    String pointType = POINT_TYPE.GOLD
+    String status = STATUS.DRAFT
+    String type = SURVEY_TYPE.EASY
+
+    static belongsTo = [surveyor:SurveyorProfile]
+
     static constraints = {
         title maxSize: 1000, nullable: true
     }

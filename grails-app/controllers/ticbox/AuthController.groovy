@@ -15,7 +15,7 @@ import uk.co.desirableobjects.oauth.scribe.OauthService
 
 class AuthController {
     def respondentService
-    OauthService oauthService
+    def oauthService
 
     def index = { redirect(action: "login", params: params) }
 
@@ -137,7 +137,7 @@ class AuthController {
 
     def registerRespondent = {
         def profileItemList = respondentService.getProfileItems()
-        [profileItemList : profileItemList]
+        [profileItemList : profileItemList, ref: params.ref]
     }
 
     def register = {
@@ -146,19 +146,27 @@ class AuthController {
         try {
             if ("surveyor".equalsIgnoreCase(params.userType)) {
                 errorAction = "registerSurveyor"
-                def surveyorRole = Role.findByName("Surveyor")
-                newUser = new User(username: params.username, passwordHash: new Sha256Hash(params.password).toHex(), email: params.email, company: params.company)
+                Role surveyorRole = Role.findByName("Surveyor")
+                newUser = new User(username: params.username, passwordHash: new Sha256Hash(params.password).toHex(), email: params.email)
                 newUser.addToRoles(surveyorRole).save()
+                new SurveyorProfile(
+                        email: params.email,
+                        companyName: params.company,
+                        userAccount: newUser
+                ).save()
             } else if ("respondent".equalsIgnoreCase(params.userType)) {
                 errorAction = "registerRespondent"
                 def respondentRole = Role.findByName("Respondent")
                 def respondentProfile = respondentService.getRespondentProfileFromParams(params)
                 newUser = new User(username: params.username, passwordHash: new Sha256Hash(params.password).toHex(), email: params.email, company: params.company, respondentProfile: respondentProfile)
                 newUser.addToRoles(respondentRole).save()
+                respondentService.processReference(params.referrer, newUser)
             }
+
             if (newUser.hasErrors()) {
                 throw new Exception(newUser.errors.allErrors.first())
             }
+
             flash.message = message(code: "general.create.success.message")
             redirect(uri: "/")
         } catch (Exception e) {
@@ -198,4 +206,5 @@ class AuthController {
         result = [success: success, message: message]
         render result  as JSON
     }
+
 }

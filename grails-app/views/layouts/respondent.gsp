@@ -97,6 +97,43 @@
         float: left;
     }
 
+    .error {
+        color: tomato;
+    }
+
+    .center {
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .icon-fb, .icon-tw, .icon-li, .icon-gg {
+        display:inline-block;
+        *display:inline; /*IE7*/
+        *zoom:1; /*IE7*/
+        background: transparent url("../images/ticbox/FB_TW_LI_Gl_logo.png") no-repeat;
+        width: 23px;
+        height: 25px;
+        padding: 0;
+        margin: 0;
+    }
+
+    .icon-fb{
+        background-position: 0 0;
+    }
+
+    .icon-tw{
+        background-position: -24px 0;
+    }
+
+    .icon-li{
+        background-position: -48px 0;
+    }
+
+    .icon-gg{
+        background-position: -72px 0;
+    }
+
+
     </style>
 
     <link rel="stylesheet" href="${resource(dir: 'frameworks/bootstrap/css', file: 'bootstrap-responsive.css')}" type="text/css">
@@ -128,10 +165,10 @@
                 </p>
                 <ul class="nav">
                     <li class="index"><g:link action="index">Survey List</g:link></li>
-                    <li class="respondentFilter"><g:link action="profileForm">Profile</g:link></li>
-                    <li class="surveyGenerator"><a href="#">Invite Friends</a></li>
-                    <li class="surveyGenerator"><a href="#">Redeem GOLD Points</a></li>
-                    <li class="surveyGenerator"><a href="#">GOLD Points History</a></li>
+                    <li class="profileForm"><g:link action="profileForm">Profile</g:link></li>
+                    <li class="inviteFriends"><g:link action="inviteFriends">Invite Friends</g:link></li>
+                    <li class="redeemGold"><g:link action="redeemGold">Redeem GOLD Points</g:link></li>
+                    <li class="goldHistory"><g:link action="goldHistory">GOLD Points History</g:link></li>
                 </ul>
             </div>
         </div>
@@ -151,11 +188,21 @@
                     </div>
                     <div id="respondentProfileContainer" class="accordion-body collapse in">
                         <div class="accordion-inner" style="padding: 5px 5px;">
-                            <div class="line">
-                                Trust : ${respondent?.respondentProfile?.trust}
+                            <div class="row-fluid">
+                                <div class="span12 center">
+                                    <img id="pic" src="${g.createLink(action: "viewImage", params: [respondentId: respondent.id])}"/>
+                                </div>
                             </div>
-                            <div class="line">
-                                Gold  : ${respondent?.respondentProfile?.gold}
+                            <br />
+                            <div class="row-fluid">
+                                <div class="span6 center">
+                                    <div>Trust</div>
+                                    <div>${respondent?.respondentProfile?.trust}</div>
+                                </div>
+                                <div class="span6 center">
+                                    <div>Gold</div>
+                                    <div>${respondent?.respondentProfile?.gold}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -178,13 +225,13 @@
                                 <g:link action="profileForm">Profile</g:link>
                             </div>
                             <div class="line">
-                                Invite Friends
+                                <g:link action="inviteFriends">Invite Friends</g:link>
                             </div>
                             <div class="line">
-                                Redeem GOLD Points
+                                <g:link action="redeemGold">Redeem GOLD Points</g:link>
                             </div>
                             <div class="line">
-                                GOLD Points History
+                                <g:link action="goldHistory">GOLD Points History</g:link>
                             </div>
                         </div>
                     </div>
